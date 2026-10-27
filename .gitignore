@@ -25,3 +25,12 @@ Thumbs.db
 !README.md
 !CONTRIBUTING.md
 !LICENSE
+
+# Python/Actions
+__pycache__/
+*.pyc
+build/
+dist/
+*.iso
+.venv/
+node_modules/
