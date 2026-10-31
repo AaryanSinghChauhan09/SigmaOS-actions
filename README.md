@@ -7,12 +7,6 @@ distribution modelled on Linux Mint and Omarchy Linux. See the parent
 [`SigmaOS`](https://github.com/AaryanSinghChauhan09/SigmaOS) repository for the
 full component index.
 
-## Principles
-- MODULARITY: Single responsibility per repository
-- LOOSE COUPLING: Minimal dependencies between repos
-- INTERFACE SEGREGATION: Clear, focused public APIs
-- DETERMINISTIC TESTING: Comprehensive test coverage
-
 ## Upstream inspirations
 - https://github.com/linuxmint/cinnamon-spices-actions
 - https://github.com/linuxmint/github-actions
