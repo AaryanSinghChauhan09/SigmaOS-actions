@@ -1,0 +1,6 @@
+[component]
+name = "SigmaOS-actions"
+tier = 3
+description = "File manager contextual action scripts and nemo-actions specification runner"
+contracts = ['context-actions-engine', 'nemo-actions-parser', 'action-script-sandbox']
+upstream_inspirations = ['https://github.com/linuxmint/cinnamon-spices-actions']
