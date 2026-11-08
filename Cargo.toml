@@ -2,5 +2,9 @@
 name = "sigmaos_actions"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "SigmaOS actions component inspired by Linux Mint / Omarchy / Arch Linux."
 
-[dependencies]
+[lib]
+name = "sigmaos_actions"
+path = "src/lib.rs"
