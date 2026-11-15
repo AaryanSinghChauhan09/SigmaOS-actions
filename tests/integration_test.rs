@@ -1,6 +1,6 @@
-use sigmaos_actions::Component;
+use sigmaos_actions::ActionEngine;
 
 #[test]
 fn component_constructs() {
-    let _c = Component::new();
+    let _c = ActionEngine::new("Test Engine");
 }

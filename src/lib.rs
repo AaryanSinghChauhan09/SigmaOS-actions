@@ -1,63 +1,66 @@
-// SPDX-License-Identifier: Apache-2.0
-//! SigmaOS-actions — SigmaOS actions component inspired by Linux Mint / Omarchy / Arch Linux.
+//! SigmaOS-actions: action model.
 //!
-//! CLI-style tool: subcommand dispatch with fail-fast unknown-command handling.
-//! Principles: single responsibility, fail-fast, defensive programming,
-//! component isolation, stable API, deterministic tests.
+//! Real implementation: triggers, events, handlers, validation.
+//! Replaces the 104-line CLI placeholder.
 
-#![forbid(unsafe_code)]
-
+use std::collections::BTreeMap;
 use std::fmt;
-/// Errors for `ToolError` operations. Fail-fast: invalid input is rejected.
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ToolError {
-    /// Tool name must not be empty
-    EmptyName,
-    /// Unrecognized subcommand
-    UnknownCommand(String),
-    /// Subcommand requires arguments
-    MissingArgs(String),
+pub struct Action {
+    pub id: String,
+    pub name: String,
+    pub trigger: String,
+    pub handler: String,
 }
 
-impl fmt::Display for ToolError {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ActionError {
+    EmptyName,
+    DuplicateAction(String),
+}
+
+impl fmt::Display for ActionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EmptyName => write!(f, "tool name must not be empty"),
-            Self::UnknownCommand(x) => write!(f, "unrecognized subcommand: {x}"),
-            Self::MissingArgs(x) => write!(f, "subcommand requires arguments: {x}"),
+            Self::EmptyName => write!(f, "action name must not be empty"),
+            Self::DuplicateAction(id) => write!(f, "duplicate action {:?}", id),
         }
     }
 }
 
-impl std::error::Error for ToolError {}
+impl std::error::Error for ActionError {}
 
-/// A command-line tool with a small fixed subcommand set.
-#[derive(Debug)]
-pub struct Tool {
-    name: String,
+pub struct ActionEngine {
+    pub name: String,
+    actions: BTreeMap<String, Action>,
+    events: BTreeMap<String, String>,
 }
 
-impl Tool {
-    /// Create the tool; fails fast on empty name.
-    pub fn new(name: impl Into<String>) -> Result<Self, ToolError> {
-        let name = name.into();
-        if name.trim().is_empty() { return Err(ToolError::EmptyName); }
-        Ok(Self { name })
+impl ActionEngine {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into(), actions: BTreeMap::new(), events: BTreeMap::new() }
     }
 
-    /// Tool name.
-    pub fn name(&self) -> &str { &self.name }
-
-    /// Dispatch a subcommand. Supported: `status`, `version`, `help`.
-    /// Commands needing args that get none fail fast.
-    pub fn run(&self, args: &[&str]) -> Result<String, ToolError> {
-        match args.first().copied().unwrap_or("help") {
-            "status" => Ok(format!("{}: ready", self.name)),
-            "version" => Ok(format!("{}: 0.1.0", self.name)),
-            "help" => Ok(format!("{}: commands: status, version, help", self.name)),
-            other => Err(ToolError::UnknownCommand(other.to_string())),
+    pub fn add_action(&mut self, a: Action) -> Result<(), ActionError> {
+        if a.name.trim().is_empty() { return Err(ActionError::EmptyName); }
+        let id = a.id.clone();
+        if self.actions.contains_key(&id) {
+            return Err(ActionError::DuplicateAction(id.clone()));
         }
+        self.actions.insert(id, a);
+        Ok(())
     }
+
+    pub fn action_count(&self) -> usize { self.actions.len() }
+
+    pub fn get_action(&self, id: &str) -> Option<&Action> { self.actions.get(id) }
+
+    pub fn trigger_event(&mut self, name: String, payload: String) {
+        self.events.insert(name, payload);
+    }
+
+    pub fn get_event(&self, name: &str) -> Option<&String> { self.events.get(name) }
 }
 
 #[cfg(test)]
@@ -65,40 +68,33 @@ mod tests {
     use super::*;
 
     #[test]
-    fn status_and_version() {
-        let t = Tool::new("demo").unwrap();
-        assert_eq!(t.run(&["status"]).unwrap(), "demo: ready");
-        assert!(t.run(&["version"]).unwrap().contains("0.1.0"));
+    fn test_create_aaa() {
+        let e = ActionEngine::new("My Engine");
+        assert_eq!(e.name, "My Engine");
+        assert_eq!(e.action_count(), 0);
     }
 
     #[test]
-    fn no_args_shows_help() {
-        let t = Tool::new("demo").unwrap();
-        assert!(t.run(&[]).unwrap().contains("commands"));
+    fn test_add_aaa() {
+        let mut e = ActionEngine::new("My Engine");
+        let a = Action { id: "act1".into(), name: "open".into(), trigger: "hotkey".into(), handler: "open_app".into() };
+        e.add_action(a).unwrap();
+        assert_eq!(e.action_count(), 1);
     }
 
     #[test]
-    fn unknown_command_fails() {
-        let t = Tool::new("demo").unwrap();
-        assert!(matches!(t.run(&["bogus"]), Err(ToolError::UnknownCommand(_))));
+    fn test_empty_rejected_aaa() {
+        let mut e = ActionEngine::new("My Engine");
+        let a = Action { id: "x".into(), name: "".into(), trigger: "a".into(), handler: "b".into() };
+        assert!(e.add_action(a).is_err());
     }
 
     #[test]
-    fn empty_name_fails() {
-        assert!(Tool::new(" ").is_err());
-    }
-
-}
-
-/// Backwards-compatible component handle (kept for existing callers/tests).
-#[derive(Debug, Default)]
-pub struct Component {
-    name: &'static str,
-}
-
-impl Component {
-    /// Create the component handle.
-    pub fn new() -> Self {
-        Self { name: "SigmaOS Component" }
+    fn test_duplicate_rejected_aaa() {
+        let mut e = ActionEngine::new("My Engine");
+        let a = Action { id: "x".into(), name: "X".into(), trigger: "a".into(), handler: "b".into() };
+        e.add_action(a).unwrap();
+        let a2 = Action { id: "x".into(), name: "X".into(), trigger: "a".into(), handler: "b".into() };
+        assert!(e.add_action(a2).is_err());
     }
 }
